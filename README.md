@@ -4,6 +4,18 @@
 
 ------
 
+### 2018.4.22日更新
+
+更新了宜出行数据的获取方法，之前的有误。具体步骤在最下面。在windows、macos上用wireshark都可以抓包，并且还提供了源代码，源代码有几个功能：
+
+- 可以将导出的json数据转换成经纬度坐标和热力值大小
+- 火星坐标系->百度坐标系的转换
+- 可以导出百度地图开放平台API绘制热力图的js代码，直接黏贴进去就可以做可视化
+
+![7](C:\Users\Alan Shaw\Documents\Hangzhou-map\jpg\7.png)
+
+------
+
 ### 2018.4.21日更新
 
 提供了紫金港到城西银泰这一片区域预处理好的热力图数据（一共两份，分别在中午和晚上时候获取），在release中的heatmap.zip文件中给出，同样的有csv风格的栅格地图文件，每个数字代表的含义下面有说明。
@@ -113,72 +125,170 @@ int main() {
 
 微信-钱包-城市服务-城市热力图也可以看热力图，但是为了反爬，该热力图对每天可以访问的次数有限制。可以依据以下步骤后去该热力图信息：
 
-1. 用电脑开热点给手机，这样将手机的流量重定向经过电脑，方便电脑对手机的网络流量进行截取分析。
-2. 电脑端下载一个http嗅探软件（如wireshark），设置过滤器捕获规则（如在wireshark中，规则为`host c.easygo.qq.com && tcp port http`，这样可以截取发往宜出行的http请求流量，然后再设置过滤规则`为http.request.method == GET`，获取宜出行的http GET报文，然后导出即可。
+1. 用电脑开热点给手机（如360wifi），这样将手机的流量重定向经过电脑，方便电脑对手机的网络流量进行截取分析。
+2. 电脑端下载一个http嗅探软件（如wireshark），设置过滤器捕获规则（如在wireshark中，规则为`host c.easygo.qq.com && tcp port http`，这样可以截取发往宜出行的http请求流量，然后再设置过滤规则为`http.response.code == 200`，获取宜出行的http response报文，这时候在你感兴趣的区域移动，会自动抓包，然后抓完了点击停止，然后点击 文件->导出对象->HTTP..，指定一个文件夹保存那些json文件。
 
-导出后的数据像这样：
+我们提供的代码还给出了使用百度地图开放平台API进行可视化的文件，网址是http://lbsyun.baidu.com/jsdemo.htm#c1_15
 
-```
-      9 0.100841       192.168.2.3           183.61.38.179         HTTP     1186   GET /api/egc/heatmapdata?lng_min=120.07981&lat_max=30.32197&lng_max=120.09590&lat_min=30.29926&level=15&city=%E6%9D%AD%E5%B7%9E&lat=undefined&lng=undefined&_token= HTTP/1.1 
+运行python代码，把txt文件复制进去，点击运行，点击显示热力图，就可以可视化。
 
-Frame 9: 1186 bytes on wire (9488 bits), 1186 bytes captured (9488 bits) on interface 0
-Ethernet II, Src: 6a:ef:43:b4:a8:08 (6a:ef:43:b4:a8:08), Dst: de:a9:04:98:92:64 (de:a9:04:98:92:64)
-Internet Protocol Version 4, Src: 192.168.2.3, Dst: 183.61.38.179
-Transmission Control Protocol, Src Port: 49357, Dst Port: 80, Seq: 1, Ack: 1, Len: 1132
-Hypertext Transfer Protocol
+导出后的文件夹像这样：
 
-     26 0.928505       192.168.2.3           183.61.38.179         HTTP     1184   GET /api/egc/heatmapdata?lng_min=120.07556&lat_max=30.32816&lng_max=120.09165&lat_min=30.30545&level=15&city=%E6%9D%AD%E5%B7%9E&lat=undefined&lng=undefined&_token= HTTP/1.1 
+![2](C:\Users\Alan Shaw\Documents\Hangzhou-map\jpg\2.png)
 
-Frame 26: 1184 bytes on wire (9472 bits), 1184 bytes captured (9472 bits) on interface 0
-Ethernet II, Src: 6a:ef:43:b4:a8:08 (6a:ef:43:b4:a8:08), Dst: de:a9:04:98:92:64 (de:a9:04:98:92:64)
-Internet Protocol Version 4, Src: 192.168.2.3, Dst: 183.61.38.179
-Transmission Control Protocol, Src Port: 49363, Dst Port: 80, Seq: 1, Ack: 1, Len: 1130
-Hypertext Transfer Protocol
-
-     58 1.616645       192.168.2.3           183.61.38.179         HTTP     1186   GET /api/egc/heatmapdata?lng_min=120.07114&lat_max=30.31812&lng_max=120.08723&lat_min=30.29541&level=15&city=%E6%9D%AD%E5%B7%9E&lat=undefined&lng=undefined&_token= HTTP/1.1 
-
-Frame 58: 1186 bytes on wire (9488 bits), 1186 bytes captured (9488 bits) on interface 0
-Ethernet II, Src: 6a:ef:43:b4:a8:08 (6a:ef:43:b4:a8:08), Dst: de:a9:04:98:92:64 (de:a9:04:98:92:64)
-Internet Protocol Version 4, Src: 192.168.2.3, Dst: 183.61.38.179
-Transmission Control Protocol, Src Port: 49365, Dst Port: 80, Seq: 1, Ack: 1, Len: 1132
-Hypertext Transfer Protocol
-```
 
 提供以下python代码洗数据（把对应的文件名替换成你自己的）：
 
 ```python
+import os
 import re
+import json
+import math
 
-file = open('/Users/alan/Desktop/source.txt', 'r')
-out = open('/Users/alan/Desktop/out.txt','w')
-line = file.readlines()
-data = ''
-for i in line:
-    data = data + i
-pattern = re.compile(r'lng_min=[0-9.]+&lat_max=[0-9.]+&lng_max=[0-9.]+&lat_min=[0-9.]+&level=15')
-lists = pattern.findall(data)
-for i in lists:
-    out.write(i+'\n')
-```
+#如果要使用百度地图开放平台可视化，请指定导出的txt文件地址
+output_path = r"C:\Users\Alan Shaw\Desktop\1.txt"
+#这是存放wireshark导出的html文件的地址
+html_path = r"C:\Users\Alan Shaw\Desktop\html"
 
-洗完数据后的数据如下（lng和lat为经纬度）：
+#火星坐标系转百度坐标系
+def gcj02tobd09(lng, lat):
+    """
+    火星坐标系(GCJ-02)转百度坐标系(BD-09)
+    谷歌、高德——>百度
+    :param lng:火星坐标经度
+    :param lat:火星坐标纬度
+    :return:
+    """
+    x_pi = 3.14159265358979324 * 3000.0 / 180.0
+    z = math.sqrt(lng * lng + lat * lat) + 0.00002 * math.sin(lat * x_pi)
+    theta = math.atan2(lat, lng) + 0.000003 * math.cos(lng * x_pi)
+    bd_lng = z * math.cos(theta) + 0.0065
+    bd_lat = z * math.sin(theta) + 0.006
+    return bd_lng, bd_lat
 
-```
-lng_min=120.07981&lat_max=30.32197&lng_max=120.09590&lat_min=30.29926&level=15
-lng_min=120.07556&lat_max=30.32816&lng_max=120.09165&lat_min=30.30545&level=15
-lng_min=120.07114&lat_max=30.31812&lng_max=120.08723&lat_min=30.29541&level=15
-lng_min=120.07256&lat_max=30.28969&lng_max=120.08865&lat_min=30.26697&level=15
-lng_min=120.08200&lat_max=30.29799&lng_max=120.09809&lat_min=30.27528&level=15
-lng_min=120.08629&lat_max=30.29662&lng_max=120.10239&lat_min=30.27390&level=15
-lng_min=120.09299&lat_max=30.30711&lng_max=120.10908&lat_min=30.28439&level=15
-lng_min=120.09664&lat_max=30.31600&lng_max=120.11273&lat_min=30.29329&level=15
-lng_min=120.10316&lat_max=30.31737&lng_max=120.11925&lat_min=30.29466&level=15
+files = os.listdir(html_path)
+heatmaps = []
+for file in files:
+    if re.search('heatmapdata',file):
+        f = open(os.path.join(r"C:\Users\Alan Shaw\Desktop\html",file))
+        f = f.read()
+        data = json.loads(f)['data']
+        minimun = data[0]['count']
+        for i in data:
+            if minimun > i['count']:
+                minimun = i['count']
+        for i in data:
+            tmp = {}
+            tmp['count'] = int(i['count'] / minimun )
+            # http://c.easygo.qq.com/eg_toc/js/map-55f0ea7694.bundle.js
+            tmp['lng'] = 1e-6 * (250.0 * i['grid_x'] + 125.0)
+            tmp['lat'] = 1e-6 * (250.0 * i['grid_y'] + 125.0)
+            heatmaps.append(tmp)
+
+text = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=您的密钥"></script>
+    <script type="text/javascript" src="http://api.map.baidu.com/library/Heatmap/2.0/src/Heatmap_min.js"></script>
+    <title>热力图功能示例</title>
+    <style type="text/css">
+		ul,li{list-style: none;margin:0;padding:0;float:left;}
+		html{height:100%}
+		body{height:100%;margin:0px;padding:0px;font-family:"微软雅黑";}
+		#container{height:500px;width:100%;}
+		#r-result{width:100%;}
+    </style>	
+</head>
+<body>
+	<div id="container"></div>
+	<div id="r-result">
+		<input type="button"  onclick="openHeatmap();" value="显示热力图"/><input type="button"  onclick="closeHeatmap();" value="关闭热力图"/>
+	</div>
+</body>
+</html>
+<script type="text/javascript">
+    var map = new BMap.Map("container");          // 创建地图实例
+
+    var point = new BMap.Point(120.095462, 30.312054);
+    map.centerAndZoom(point, 15);             // 初始化地图，设置中心点坐标和地图级别
+    map.enableScrollWheelZoom(); // 允许滚轮缩放
+
+    var points =[
+'''
+text1 = '''
+    ];
+
+    if(!isSupportCanvas()){
+    	alert('热力图目前只支持有canvas支持的浏览器,您所使用的浏览器不能使用热力图功能~')
+    }
+	//详细的参数,可以查看heatmap.js的文档 https://github.com/pa7/heatmap.js/blob/master/README.md
+	//参数说明如下:
+	/* visible 热力图是否显示,默认为true
+     * opacity 热力的透明度,1-100
+     * radius 势力图的每个点的半径大小   
+     * gradient  {JSON} 热力图的渐变区间 . gradient如下所示
+     *	{
+			.2:'rgb(0, 255, 255)',
+			.5:'rgb(0, 110, 255)',
+			.8:'rgb(100, 0, 255)'
+		}
+		其中 key 表示插值的位置, 0~1. 
+		    value 为颜色值. 
+     */
+	heatmapOverlay = new BMapLib.HeatmapOverlay({"radius":20});
+	map.addOverlay(heatmapOverlay);
+	heatmapOverlay.setDataSet({data:points,max:100});
+	//是否显示热力图
+    function openHeatmap(){
+        heatmapOverlay.show();
+    }
+	function closeHeatmap(){
+        heatmapOverlay.hide();
+    }
+	closeHeatmap();
+    function setGradient(){
+     	/*格式如下所示:
+		{
+	  		0:'rgb(102, 255, 0)',
+	 	 	.5:'rgb(255, 170, 0)',
+		  	1:'rgb(255, 0, 0)'
+		}*/
+     	var gradient = {};
+     	var colors = document.querySelectorAll("input[type='color']");
+     	colors = [].slice.call(colors,0);
+     	colors.forEach(function(ele){
+			gradient[ele.getAttribute("data-key")] = ele.value; 
+     	});
+        heatmapOverlay.setOptions({"gradient":gradient});
+    }
+	//判断浏览区是否支持canvas
+    function isSupportCanvas(){
+        var elem = document.createElement('canvas');
+        return !!(elem.getContext && elem.getContext('2d'));
+    }
+</script>
+'''
+
+for heatmap in heatmaps:
+    lng,lat = gcj02tobd09(heatmap['lng'],heatmap['lat'])
+    #print( '{"lng": %.6f, "lat": %.6f, "count": %d},' % (heatmap['lng'],heatmap['lat'],heatmap['count']))
+    #print( '{"lng": %.6f, "lat": %.6f, "count": %d},' % (lng,lat,heatmap['count']))
+    text = text + '{"lng": %.6f, "lat": %.6f, "count": %d},\n' % (lng,lat,heatmap['count'])
+
+text = text[0:len(text)-1]
+text = text + text1
+f = open(output_path,'w')
+f.write(text)
+f.close()
 ```
 
 下面是用wireshark进行一些操作的截图
 
-![4](jpg/4.png)
+![3](C:\Users\Alan Shaw\Documents\Hangzhou-map\jpg\3.png)
 
 ![5](jpg/5.png)
 
-![6](jpg/6.png)
+
