@@ -12,7 +12,7 @@
 - 火星坐标系->百度坐标系的转换
 - 可以导出百度地图开放平台API绘制热力图的js代码，直接黏贴进去就可以做可视化
 
-![7](C:\Users\Alan Shaw\Documents\Hangzhou-map\jpg\7.png)
+![7](jpg/7.png)
 
 ------
 
@@ -134,7 +134,7 @@ int main() {
 
 导出后的文件夹像这样：
 
-![2](C:\Users\Alan Shaw\Documents\Hangzhou-map\jpg\2.png)
+![2](jpg/2.png)
 
 
 提供以下python代码洗数据（把对应的文件名替换成你自己的）：
@@ -287,7 +287,7 @@ f.close()
 
 下面是用wireshark进行一些操作的截图
 
-![3](C:\Users\Alan Shaw\Documents\Hangzhou-map\jpg\3.png)
+![3](jpg/3.png)
 
 ![5](jpg/5.png)
 
