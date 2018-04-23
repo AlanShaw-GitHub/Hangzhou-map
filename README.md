@@ -170,7 +170,7 @@ files = os.listdir(html_path)
 heatmaps = []
 for file in files:
     if re.search('heatmapdata',file):
-        f = open(os.path.join(r"C:\Users\Alan Shaw\Desktop\html",file))
+        f = open(os.path.join(html_path,file))
         f = f.read()
         data = json.loads(f)['data']
         minimun = data[0]['count']
