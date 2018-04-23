@@ -146,9 +146,9 @@ import json
 import math
 
 #如果要使用百度地图开放平台可视化，请指定导出的txt文件地址
-output_path = r"C:\Users\Alan Shaw\Desktop\1.txt"
+output_path = '/Users/alan/Desktop/5.txt'
 #这是存放wireshark导出的html文件的地址
-html_path = r"C:\Users\Alan Shaw\Desktop\html"
+html_path = '/Users/alan/Desktop/html'
 
 #火星坐标系转百度坐标系
 def gcj02tobd09(lng, lat):
@@ -168,6 +168,7 @@ def gcj02tobd09(lng, lat):
 
 files = os.listdir(html_path)
 heatmaps = []
+dicts = {}
 for file in files:
     if re.search('heatmapdata',file):
         f = open(os.path.join(html_path,file))
@@ -178,13 +179,13 @@ for file in files:
             if minimun > i['count']:
                 minimun = i['count']
         for i in data:
-            tmp = {}
-            tmp['count'] = int(i['count'] / minimun )
-            # http://c.easygo.qq.com/eg_toc/js/map-55f0ea7694.bundle.js
-            tmp['lng'] = 1e-6 * (250.0 * i['grid_x'] + 125.0)
-            tmp['lat'] = 1e-6 * (250.0 * i['grid_y'] + 125.0)
-            heatmaps.append(tmp)
-
+            count = int(i['count'] / minimun)
+            k = dicts.get(str(i['grid_x']) + str(i['grid_y']), 'error')
+            if k == 'error':
+                dicts["%d%d" % (i['grid_x'], i['grid_y'])] = count
+            else:
+                dicts[str(i['grid_x']) + str(i['grid_y'])] = dicts[str(i['grid_x']) + str(i['grid_y'])] + count
+print(len(dicts))
 text = '''
 <!DOCTYPE html>
 <html>
@@ -272,11 +273,14 @@ text1 = '''
 </script>
 '''
 
-for heatmap in heatmaps:
-    lng,lat = gcj02tobd09(heatmap['lng'],heatmap['lat'])
+for coor,value in dicts.items():
+    # http://c.easygo.qq.com/eg_toc/js/map-55f0ea7694.bundle.js
+    lng = 1e-6 * (250.0 * int(coor[0:6]) + 125.0)
+    lat = 1e-6 * (250.0 * int(coor[6:12]) + 125.0)
+    lng,lat = gcj02tobd09(lng,lat)
     #print( '{"lng": %.6f, "lat": %.6f, "count": %d},' % (heatmap['lng'],heatmap['lat'],heatmap['count']))
     #print( '{"lng": %.6f, "lat": %.6f, "count": %d},' % (lng,lat,heatmap['count']))
-    text = text + '{"lng": %.6f, "lat": %.6f, "count": %d},\n' % (lng,lat,heatmap['count'])
+    text = text + '{"lng": %.6f, "lat": %.6f, "count": %d},\n' % (lng,lat,value)
 
 text = text[0:len(text)-1]
 text = text + text1
